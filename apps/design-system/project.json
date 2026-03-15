@@ -1,0 +1,84 @@
+{
+  "name": "design-system",
+  "$schema": "../../node_modules/nx/schemas/project-schema.json",
+  "projectType": "application",
+  "sourceRoot": "apps/design-system/src",
+  "prefix": "lxt-design-system",
+  "targets": {
+    "build": {
+      "executor": "@angular-devkit/build-angular:browser-esbuild",
+      "outputs": ["{options.outputPath}"],
+      "options": {
+        "outputPath": "dist/apps/design-system",
+        "index": "apps/design-system/src/index.html",
+        "main": "apps/design-system/src/main.ts",
+        "polyfills": ["zone.js"],
+        "tsConfig": "apps/design-system/tsconfig.app.json",
+        "inlineStyleLanguage": "scss",
+        "assets": ["apps/design-system/src/favicon.png", "apps/design-system/src/assets"],
+        "styles": ["libs/angular-components/src/lib/styles.scss"],
+        "scripts": []
+      },
+      "configurations": {
+        "production": {
+          "budgets": [
+            {
+              "type": "initial",
+              "maximumWarning": "4mb",
+              "maximumError": "5mb"
+            },
+            {
+              "type": "anyComponentStyle",
+              "maximumWarning": "400kb",
+              "maximumError": "500kb"
+            }
+          ],
+          "outputHashing": "all"
+        },
+        "development": {
+          "buildOptimizer": false,
+          "optimization": false,
+          "vendorChunk": true,
+          "extractLicenses": false,
+          "sourceMap": true,
+          "namedChunks": true
+        }
+      },
+      "defaultConfiguration": "production"
+    },
+    "serve": {
+      "executor": "@angular-devkit/build-angular:dev-server",
+      "configurations": {
+        "production": {
+          "buildTarget": "design-system:build:production"
+        },
+        "development": {
+          "buildTarget": "design-system:build:development"
+        }
+      },
+      "defaultConfiguration": "development"
+    },
+    "extract-i18n": {
+      "executor": "@angular-devkit/build-angular:extract-i18n",
+      "options": {
+        "buildTarget": "design-system:build"
+      }
+    },
+    "lint": {
+      "executor": "@nx/eslint:lint",
+      "outputs": ["{options.outputFile}"],
+      "options": {
+        "lintFilePatterns": ["libs/angular-components/**/*.{ts,js,html,scss}", "libs/angular-components/package.json"]
+      }
+    }
+  },
+  "tags": ["type:app"],
+  "generators": {
+    "@nx/angular:component": {
+      "style": "scss"
+    },
+    "@schematics/angular:component": {
+      "style": "scss"
+    }
+  }
+}

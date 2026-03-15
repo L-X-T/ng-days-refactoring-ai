@@ -1,0 +1,17 @@
+{
+  "extraKnownMarketplaces": {
+    "nx-claude-plugins": {
+      "source": {
+        "source": "github",
+        "repo": "nrwl/nx-ai-agents-config"
+      }
+    }
+  },
+  "enabledMcpjsonServers": [
+    "angular-cli"
+  ],
+  "enableAllProjectMcpServers": true,
+  "enabledPlugins": {
+    "nx@nx-claude-plugins": true
+  }
+}
