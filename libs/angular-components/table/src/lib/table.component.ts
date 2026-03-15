@@ -5,6 +5,7 @@ import {
   ElementRef,
   EventEmitter,
   HostListener,
+  inject,
   Input,
   OnChanges,
   OnInit,
@@ -17,6 +18,8 @@ import { FormsModule, ReactiveFormsModule } from '@angular/forms';
 import {
   ColDef,
   FirstDataRenderedEvent,
+  GetContextMenuItemsParams,
+  GetMainMenuItemsParams,
   GetRowIdFunc,
   GridOptions,
   ICellRendererParams,
@@ -28,6 +31,7 @@ import {
 } from 'ag-grid-community';
 import { SideBarDef } from 'ag-grid-enterprise';
 import { AgGridAngular } from 'ag-grid-angular';
+import { left } from '@popperjs/core';
 
 import { TableColumn } from './entities/table-column';
 import { TableColumnTranslations } from './entities/table-column-translations';
@@ -36,12 +40,13 @@ import { TableRow } from './entities/table-row';
 import { Toolbar } from './entities/toolbar';
 import { ToolbarAction } from './entities/toolbar-action';
 import { Aggregation } from './entities/aggregations';
+import { CellData } from './entities/cell-data-type';
+import { BitMask, customCellRendererMask, Types } from './entities/types-bitmask';
 
 import { ToolbarComponent } from './toolbar/toolbar.component';
 import { PaginatorComponent } from './paginator/paginator.component';
 import { PageSelectorComponent } from './page-selector/page-selector.component';
 import { AggregationRowComponent } from './aggregation-row/aggregation-row.component';
-import { CellData } from './entities/cell-data-type';
 import {
   renderBooleanTemplate,
   renderCheckboxTemplate,
@@ -51,8 +56,7 @@ import {
   renderProgressTemplate,
   renderStatusTemplate,
 } from './cell-renderer/renderer-templates';
-import { BitMask, customCellRendererMask, numbersOnlyMask, Types } from './entities/types-bitmask';
-import { left } from '@popperjs/core';
+import { BottomRowData, TableAggregationService } from './table-aggregation.service';
 
 @Component({
   selector: 'lxt-table',
@@ -60,8 +64,13 @@ import { left } from '@popperjs/core';
   templateUrl: './table.component.html',
   styleUrls: ['./table.component.scss'],
   encapsulation: ViewEncapsulation.ShadowDom,
+  providers: [TableAggregationService],
 })
 export class TableComponent implements AfterViewInit, OnChanges, OnInit {
+  // 1. inject()
+  private readonly aggregationService = inject(TableAggregationService);
+
+  // 2. Inputs & Outputs
   @Input() tableData!: TableData;
   @Input() toolbar!: Toolbar;
   @Input() editRoute = '';
@@ -84,20 +93,24 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   @Output() actionExecuted = new EventEmitter<ToolbarAction>();
   @Output() rowSelected = new EventEmitter<TableRow[]>();
 
+  // 3. View queries
   @ViewChild('myGrid') grid!: AgGridAngular;
   @ViewChild('myGrid', { read: ElementRef }) gridRef!: ElementRef;
 
-  bottomRowData: any[] = [{}];
+  // 4. State
+  bottomRowData: BottomRowData[] = [{}];
   appliedAggFuncs: { [key in Aggregation]?: boolean } = {};
   columns: TableColumn[] = [];
   rows: TableRow[] = [];
-  columnTypes!: { [key: string]: ColDef };
-  defaultColDef!: ColDef;
-  paginationAutoPageSize = false; // [TODO] set true for mobile
-  paginationNumberFormatter!: (params: PaginationNumberFormatterParams<any, any>) => string;
   selectedRows: TableRow[] = [];
   selectedRowCount = 0;
   selectionMessage = '';
+
+  // 5. Other members
+  columnTypes!: { [key: string]: ColDef };
+  defaultColDef!: ColDef;
+  paginationAutoPageSize = false; // [TODO] set true for mobile
+  paginationNumberFormatter!: (params: PaginationNumberFormatterParams) => string;
   sideBar!: SideBarDef | string | string[] | boolean | null;
   gridOptions!: GridOptions;
   autoSizeStrategy!:
@@ -109,19 +122,38 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     '<object style="position:absolute;top:50%;left:50%;transform:translate(-50%, -50%) scale(2)" type="image/svg+xml" data="https://ag-grid.com/images/ag-grid-loading-spinner.svg" aria-label="loading"></object>';
   overlayNoRowsTemplate = '<span>No rows to show</span>';
 
-  getRowId: GetRowIdFunc<any> = (params) => {
+  getRowId: GetRowIdFunc = (params) => {
     let rowId = '';
     this.primaryKeyColumns.forEach((column) => {
       if (rowId !== '') {
         rowId += '-';
       }
-      rowId += params.data[column];
+      rowId += (params.data as Record<string, unknown>)[column];
     });
     return rowId;
   };
 
+  onCellContextMenu = (): void => {
+    setTimeout(() => {
+      const menu = this.gridRef.nativeElement.querySelector('.ag-menu') as HTMLElement;
+      if (!menu) {
+        return;
+      }
+      const menuRect = menu.getBoundingClientRect();
+      const viewportHeight = window.innerHeight;
+
+      if (menuRect.bottom > viewportHeight) {
+        const gridElement = this.gridRef.nativeElement;
+        const gridHeight = gridElement.offsetHeight - (gridElement.getBoundingClientRect().bottom - viewportHeight);
+        const top = Math.floor(Math.max(0, gridHeight - (menuRect.height + 16)));
+        menu.style.top = `${top}px`;
+      }
+    }, 0);
+  };
+
   private isAutoSized = false;
 
+  // Lifecycle hooks
   ngOnInit(): void {
     this.setUpGridOptions();
     this.setUpColumnTypes();
@@ -134,32 +166,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   ngAfterViewInit(): void {
     this.setUpOnIntersection();
-  }
-
-  @HostListener('keydown', ['$event'])
-  keydown(event: KeyboardEvent) {
-    const activeElement = (<any>event).explicitOriginalTarget;
-    if (activeElement?.tagName === 'INPUT' || !event.shiftKey) {
-      return;
-    }
-
-    switch (event.key) {
-      case 'Home':
-        this.grid.api.paginationGoToFirstPage();
-        break;
-      case 'End':
-        this.grid.api.paginationGoToLastPage();
-        break;
-      case 'ArrowLeft':
-        this.grid.api.paginationGoToPreviousPage();
-        break;
-      case 'ArrowRight':
-        this.grid.api.paginationGoToNextPage();
-        break;
-      default:
-        return;
-    }
-    event.preventDefault();
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -208,17 +214,81 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     this.prepareSelectionMessage();
   }
 
-  private setUpOnIntersection() {
+  @HostListener('keydown', ['$event'])
+  keydown(event: KeyboardEvent): void {
+    const activeElement = (event as KeyboardEvent & { explicitOriginalTarget?: HTMLElement }).explicitOriginalTarget;
+    if (activeElement?.tagName === 'INPUT' || !event.shiftKey) {
+      return;
+    }
+
+    switch (event.key) {
+      case 'Home':
+        this.grid.api.paginationGoToFirstPage();
+        break;
+      case 'End':
+        this.grid.api.paginationGoToLastPage();
+        break;
+      case 'ArrowLeft':
+        this.grid.api.paginationGoToPreviousPage();
+        break;
+      case 'ArrowRight':
+        this.grid.api.paginationGoToNextPage();
+        break;
+      default:
+        return;
+    }
+    event.preventDefault();
+  }
+
+  // 6. Public methods
+  onSelectionChanged(): void {
+    this.readSelectedRowsAndEmitThem();
+  }
+
+  onFirstDataRendered(_params: FirstDataRenderedEvent): void {
+    this.selectFirstRow();
+  }
+
+  onSearch(searchTerm: string): void {
+    this.grid.api.setQuickFilter(searchTerm);
+    this.prepareSelectionMessage();
+  }
+
+  onColumnChanged(): void {
+    this.reload();
+  }
+
+  onColumnGroupChanged(): void {
+    const columns = this.grid.api.getColumns();
+    const isColumnGrouped =
+      columns?.some((column) => (column as unknown as Record<string, unknown>)['rowGroupActive']) ?? false;
+    this.setVisibilityValuesSection(isColumnGrouped);
+  }
+
+  refreshGrid(): void {
+    if (!this.grid) {
+      return;
+    }
+    this.grid?.api.redrawRows();
+    this.reload();
+  }
+
+  onRowDataUpdated(): void {
+    this.readSelectedRowsAndEmitThem();
+  }
+
+  // 7. Private methods
+  private setUpOnIntersection(): void {
     const options: IntersectionObserverInit = {
       root: document.documentElement,
     };
 
-    const observer = new IntersectionObserver((entries, observer) => {
+    const observer = new IntersectionObserver((entries, obs) => {
       entries.forEach((entry) => {
         if (!this.isAutoSized && entry.intersectionRatio > 0) {
           this.grid.api.autoSizeAllColumns();
           this.isAutoSized = true;
-          observer.disconnect();
+          obs.disconnect();
           return;
         }
       });
@@ -227,7 +297,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     observer.observe(this.gridRef.nativeElement);
   }
 
-  private setUpColumns(tableData: TableData) {
+  private setUpColumns(tableData: TableData): void {
     this.columns = [
       ...tableData.columns
         .filter((col) => col.isVisible)
@@ -239,23 +309,23 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     ];
   }
 
-  private updateColumnTranslations(translations: TableColumnTranslations) {
+  private updateColumnTranslations(translations: TableColumnTranslations): void {
     this.columns = [
       ...this.columns.map((col) => ({ ...col, headerName: translations[col.localizerKey ?? ''] ?? col.field })),
     ];
   }
 
-  private showIcon = (aggFunc: Aggregation) => {
+  private showIcon(aggFunc: Aggregation): string {
     if (this.appliedAggFuncs[aggFunc]) {
       return '<i class="icon i-lxt-check"></i>';
     }
     return '';
-  };
+  }
 
-  private getMainMenuItems = (params: any) => {
-    let items = params.defaultItems;
+  private getMainMenuItems = (params: GetMainMenuItemsParams): (string | MenuItemDef)[] => {
+    let items: (string | MenuItemDef)[] = [...params.defaultItems] as (string | MenuItemDef)[];
     if (!this.allowRowGrouping) {
-      items = items.filter((item: any) => item !== 'rowGroup');
+      items = (items as string[]).filter((item) => item !== 'rowGroup') as (string | MenuItemDef)[];
     }
     items.push({
       name: 'Aggregation func.',
@@ -266,16 +336,16 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     return items;
   };
 
-  private getContextMenuItems = (params: any) => {
+  private getContextMenuItems = (params: GetContextMenuItemsParams): (string | MenuItemDef)[] => {
     // Context menu for aggregation row
-    if (params.node.id.match(/b-[0-9]{1,2}/g)) {
+    if (params.node?.id?.match(/b-[0-9]{1,2}/g)) {
       return [];
     }
 
     return this.getRowContextMenu();
   };
 
-  private getAggregationContextMenu(params: any) {
+  private getAggregationContextMenu(params: unknown): (string | MenuItemDef)[] {
     if (!this.grid.columnDefs) {
       return [];
     }
@@ -304,77 +374,59 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
           break;
       }
     }
-    const defalutActions = [
+    const defaultActions: MenuItemDef[] = [
       {
         name: 'count',
         icon: this.showIcon(Aggregation.COUNT),
-        action: () => {
-          this.addAggregation(Aggregation.COUNT);
-        },
+        action: () => this.addAggregation(Aggregation.COUNT),
       },
       {
         name: 'count_d',
         icon: this.showIcon(Aggregation.COUNT_DISTINCT),
-        action: () => {
-          this.addAggregation(Aggregation.COUNT_DISTINCT);
-        },
+        action: () => this.addAggregation(Aggregation.COUNT_DISTINCT),
       },
       {
         name: 'first',
         icon: this.showIcon(Aggregation.FIRST),
-        action: () => {
-          this.addAggregation(Aggregation.FIRST);
-        },
+        action: () => this.addAggregation(Aggregation.FIRST),
       },
       {
         name: 'last',
         icon: this.showIcon(Aggregation.LAST),
-        action: () => {
-          this.addAggregation(Aggregation.LAST);
-        },
+        action: () => this.addAggregation(Aggregation.LAST),
       },
       {
         name: 'avg',
         icon: this.showIcon(Aggregation.AVERAGE),
-        action: () => {
-          this.addAggregation(Aggregation.AVERAGE);
-        },
+        action: () => this.addAggregation(Aggregation.AVERAGE),
         disabled: !types.checkFlag(Types.number),
       },
       {
         name: 'median',
         icon: this.showIcon(Aggregation.MEDIAN),
-        action: () => {
-          this.addAggregation(Aggregation.MEDIAN);
-        },
+        action: () => this.addAggregation(Aggregation.MEDIAN),
         disabled: !types.checkFlag(Types.number),
       },
       {
         name: 'sum',
         icon: this.showIcon(Aggregation.SUM),
-        action: () => {
-          this.addAggregation(Aggregation.SUM);
-        },
+        action: () => this.addAggregation(Aggregation.SUM),
         disabled: !types.checkFlag(Types.number),
       },
       {
         name: 'max',
         icon: this.showIcon(Aggregation.MAX),
-        action: () => {
-          this.addAggregation(Aggregation.MAX);
-        },
+        action: () => this.addAggregation(Aggregation.MAX),
         disabled: !types.checkFlag(Types.number | Types.date),
       },
       {
         name: 'min',
         icon: this.showIcon(Aggregation.MIN),
-        action: () => {
-          this.addAggregation(Aggregation.MIN);
-        },
+        action: () => this.addAggregation(Aggregation.MIN),
         disabled: !types.checkFlag(Types.number | Types.date),
       },
     ];
-    return defalutActions;
+    return defaultActions;
   }
 
   private getRowContextMenu(): (string | MenuItemDef)[] {
@@ -391,19 +443,10 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
       }
       result.push('separator');
     }
-    result.push({
-      name: 'Clear all settings',
-      action: () => {},
-    });
-    result.push({
-      name: 'Send message',
-      action: () => {},
-    });
+    result.push({ name: 'Clear all settings', action: () => {} });
+    result.push({ name: 'Send message', action: () => {} });
     result.push('separator');
-    result.push({
-      name: 'Reload',
-      action: () => {},
-    });
+    result.push({ name: 'Reload', action: () => {} });
     return result;
   }
 
@@ -425,15 +468,15 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
         values: 'Row groups values',
       },
       aggFuncs: {
-        min: this.minAggregation.bind(this),
-        max: this.maxAggregation.bind(this),
-        sum: this.sumAggregation.bind(this),
-        avg: this.averageAggregation.bind(this),
-        first: this.firstAggregation.bind(this),
-        last: this.lastAggregation.bind(this),
-        count: this.countAggregation.bind(this),
-        count_d: this.countDistinctAggregation.bind(this),
-        median: this.medianAggregation.bind(this),
+        min: (rows) => this.aggregationService.minAggregation(rows),
+        max: (rows) => this.aggregationService.maxAggregation(rows),
+        sum: (rows) => this.aggregationService.sumAggregation(rows),
+        avg: (rows) => this.aggregationService.averageAggregation(rows),
+        first: (rows) => this.aggregationService.firstAggregation(rows),
+        last: (rows) => this.aggregationService.lastAggregation(rows),
+        count: (rows) => this.aggregationService.countAggregation(rows),
+        count_d: (rows) => this.aggregationService.countDistinctAggregation(rows),
+        median: (rows) => this.aggregationService.medianAggregation(rows),
       },
       suppressRowClickSelection: !this.isSelectionEnabled,
       statusBar: this.pagination
@@ -449,24 +492,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
       onCellContextMenu: this.onCellContextMenu,
     };
   }
-
-  onCellContextMenu = () => {
-    setTimeout(() => {
-      const menu = this.gridRef.nativeElement.querySelector('.ag-menu') as HTMLElement;
-      if (!menu) {
-        return;
-      }
-      const menuRect = menu.getBoundingClientRect();
-      const viewportHeight = window.innerHeight;
-
-      if (menuRect.bottom > viewportHeight) {
-        const gridElement = this.gridRef.nativeElement;
-        const gridHeight = gridElement.offsetHeight - (gridElement.getBoundingClientRect().bottom - viewportHeight);
-        const top = Math.floor(Math.max(0, gridHeight - (menuRect.height + 16)));
-        menu.style.top = `${top}px`;
-      }
-    }, 0);
-  };
 
   private setSelection(selection: boolean): void {
     this.isSelectionEnabled = selection;
@@ -507,194 +532,31 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     if (!this.grid.columnDefs) {
       return;
     }
-    for (const columnDef of this.grid.columnDefs) {
-      const allRows: { colDefs: ColDef; values: any[] } = { colDefs: {}, values: [] };
-      const column = (<ColDef>columnDef).field;
-      const type = (<ColDef>columnDef).type as keyof typeof Types;
 
-      if (!column) {
-        continue;
-      }
-      allRows.colDefs = columnDef;
-      let index = this.bottomRowData.findIndex((row) => row[column]?.aggFunction === aggType);
-      if (index >= 0) {
-        delete this.bottomRowData[index][column];
-        for (let i = index + 1; i < this.bottomRowData.length; i++) {
-          if (this.bottomRowData[i][column]) {
-            this.bottomRowData[index++][column] = this.bottomRowData[i][column];
+    const columnEntries = this.grid.columnDefs
+      .map((columnDef) => {
+        const column = (<ColDef>columnDef).field;
+        if (!column) return null;
+        const values: unknown[] = [];
+        this.grid.api.forEachNodeAfterFilterAndSort((node) => {
+          if (!node.group) {
+            values.push((node.data as Record<string, unknown>)[column]);
           }
-          delete this.bottomRowData[i][column];
-        }
-        this.bottomRowData = this.bottomRowData.filter((row) => Object.keys(row).length > 0);
-        if (this.bottomRowData.length === 0) {
-          this.bottomRowData = [{}];
-        }
-        this.bottomRowData = [...this.bottomRowData];
-        continue;
-      }
+        });
+        return { column, colDef: columnDef as ColDef, values };
+      })
+      .filter((entry): entry is { column: string; colDef: ColDef; values: unknown[] } => entry !== null);
 
-      this.grid.api.forEachNodeAfterFilterAndSort((node) => {
-        if (!node.group) {
-          allRows.values.push(node.data[column]);
-        }
-      });
-      let value: number | string = 0;
-      switch (aggType) {
-        case Aggregation.SUM:
-          if (numbersOnlyMask.checkFlag(Types[type])) {
-            value = this.sumAggregation(allRows);
-          }
-          break;
-        case Aggregation.COUNT:
-          value = this.countAggregation(allRows);
-          break;
-        case Aggregation.COUNT_DISTINCT:
-          value = this.countDistinctAggregation(allRows);
-          break;
-        case Aggregation.AVERAGE:
-          value = this.averageAggregation(allRows);
-          break;
-        case Aggregation.FIRST:
-          value = this.firstAggregation(allRows);
-          break;
-        case Aggregation.LAST:
-          value = this.lastAggregation(allRows);
-          break;
-        case Aggregation.MAX:
-          value = this.maxAggregation(allRows);
-          break;
-        case Aggregation.MIN:
-          value = this.minAggregation(allRows);
-          break;
-        case Aggregation.MEDIAN:
-          value = this.medianAggregation(allRows);
-          break;
-        default:
-          break;
-      }
-      const object = { aggFunction: aggType, value: value };
-      //const emptyIndex = this.bottomRowData.findIndex(
-      //  (row) =>
-      //    !row[column] && (Object.entries(row)?.findIndex((entry: any) => entry['aggFunction'] !== aggType) ?? -1) >= 0,
-      //);
-      //console.log(emptyIndex);
-      const lastIndex = this.bottomRowData.length - 1;
-      const entries = Object.entries(this.bottomRowData[lastIndex]);
+    this.bottomRowData = this.aggregationService.toggleAggregation(aggType, this.bottomRowData, columnEntries);
 
-      if (value === '') {
-        continue;
-      }
-      if (entries.length === 0 || entries.find((entry: any) => entry[1]?.aggFunction === aggType)) {
-        this.bottomRowData[lastIndex][column] = object;
-      } else {
-        this.bottomRowData.push({ [column]: object });
-      }
-      this.bottomRowData = [...this.bottomRowData];
-    }
-    if (Object.keys(this.bottomRowData[0]).length === 0) {
-      this.showAggRow = false;
-    } else {
-      this.showAggRow = true;
-    }
-  }
-
-  firstAggregation(rows: any): string {
-    rows = rows.values;
-    return rows[0] ?? '';
-  }
-
-  lastAggregation(rows: any) {
-    rows = rows.values;
-    return rows.at(-1) ?? '';
-  }
-
-  countAggregation(rows: any) {
-    rows = rows.values;
-    return rows.length;
-  }
-
-  countDistinctAggregation(rows: any) {
-    rows = rows.values;
-    return new Set(rows).size;
-  }
-
-  medianAggregation(rows: any) {
-    if (!this.isColTypeNumber(rows.colDef)) {
-      return '';
-    }
-    rows = rows.values;
-    if (!rows || !rows.every) {
-      return '';
-    }
-    if (!rows.every((item: any) => typeof item === 'number' && !isNaN(item))) {
-      return '';
-    }
-    const sortedRows = rows.sort((a: any, b: any) => a - b);
-    const condition = !!(rows.length % 2) || isNaN(rows[0]);
-    const index = Math.floor(rows.length / 2);
-    const value = condition ? sortedRows[index] : (sortedRows[index] + sortedRows[index + 1]) / 2;
-    return value;
-  }
-
-  minAggregation(rows: any) {
-    rows = rows.values;
-    if (!rows.every || !rows.every((item: any) => (typeof item === 'number' && !isNaN(item)) || item.getTime)) {
-      return '';
-    }
-    return rows.sort((a: any, b: any) => a - b)[0] ?? '';
-  }
-
-  maxAggregation(rows: any) {
-    rows = rows.values;
-    if (!rows.every || !rows.every((item: any) => (typeof item === 'number' && !isNaN(item)) || item.getTime)) {
-      return '';
-    }
-    return rows.sort((a: any, b: any) => b - a)[0] ?? '';
-  }
-
-  sumAggregation(rows: any) {
-    if (!this.isColTypeNumber(rows.colDef)) {
-      return '';
-    }
-    rows = rows.values;
-    if (!rows) {
-      return '';
-    }
-    let sum = 0;
-    for (const row of rows) {
-      if (isNaN(row) || row?.getTime) {
-        return '';
-      }
-      sum += row;
-    }
-    return sum;
-  }
-
-  averageAggregation(rows: any) {
-    if (!this.isColTypeNumber(rows.colDef)) {
-      return '';
-    }
-    rows = rows.values;
-    if (!rows) {
-      return '';
-    }
-    const sum = this.sumAggregation(rows);
-    if (isNaN(<number>sum)) {
-      return '';
-    }
-    return <number>sum / rows.length;
-  }
-
-  isColTypeNumber(colDef: ColDef) {
-    const type = colDef.cellDataType as keyof typeof Types;
-    return numbersOnlyMask.checkFlag(Types[type]);
+    this.showAggRow = Object.keys(this.bottomRowData[0]).length > 0;
   }
 
   private setUpColumnTypes(): void {
     // Setting properties across ALL Columns
     this.defaultColDef = {
       checkboxSelection: (params) => {
-        // If the row selection is disabled we do not want to show the redudant checkboxes
+        // If the row selection is disabled we do not want to show the redundant checkboxes
         if (!this.isSelectionEnabled) {
           return false;
         }
@@ -717,14 +579,10 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
       filter: true,
       cellRendererSelector: (params) => {
         if (params.colDef?.colId === 'ag-Grid-AutoColumn' && !params.value) {
-          return {
-            component: 'agGroupCellRenderer',
-          };
+          return { component: 'agGroupCellRenderer' };
         }
         if (params.node.group && params.colDef?.colId === 'ag-Grid-AutoColumn') {
-          return {
-            component: 'agGroupCellRenderer',
-          };
+          return { component: 'agGroupCellRenderer' };
         }
         if (params.node.rowPinned) {
           return {
@@ -740,9 +598,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
         } else {
           const type = params.colDef?.cellDataType as keyof typeof Types;
           if (!customCellRendererMask.checkFlag(Types[type])) {
-            return {
-              component: undefined,
-            };
+            return { component: undefined };
           }
           return {
             component: (params: ICellRendererParams & TableColumn) => {
@@ -811,7 +667,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   private setUpPagination(): void {
     if (this.paginationPageSize && this.rows?.length > this.paginationPageSize) {
-      this.paginationNumberFormatter = (params: any) => params.value.toString();
+      this.paginationNumberFormatter = (params: PaginationNumberFormatterParams) => params.value.toString();
     }
   }
 
@@ -840,25 +696,14 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   private setUpAutoSizing(): void {
     switch (this.columnsSizeStrategy) {
       case 'fitCellContents':
-        this.autoSizeStrategy = {
-          type: 'fitCellContents',
-        };
+        this.autoSizeStrategy = { type: 'fitCellContents' };
         break;
       case 'fitProvidedWidth':
-        this.autoSizeStrategy = {
-          type: 'fitProvidedWidth',
-          width: 1000,
-        };
+        this.autoSizeStrategy = { type: 'fitProvidedWidth', width: 1000 };
         break;
       default:
-        this.autoSizeStrategy = {
-          type: 'fitGridWidth',
-        };
+        this.autoSizeStrategy = { type: 'fitGridWidth' };
     }
-  }
-
-  onSelectionChanged(): void {
-    this.readSelectedRowsAndEmitThem();
   }
 
   private readSelectedRowsAndEmitThem(): void {
@@ -882,10 +727,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     this.selectionMessage = `${rowCount} rows`;
   }
 
-  onFirstDataRendered(params: FirstDataRenderedEvent): void {
-    this.selectFirstRow();
-  }
-
   private selectFirstRow(): void {
     if (this.grid) {
       const rowModel = this.grid.api.getModel();
@@ -896,37 +737,10 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     }
   }
 
-  onSearch(searchTerm: string): void {
-    this.grid.api.setQuickFilter(searchTerm);
-    this.prepareSelectionMessage();
-  }
-
-  onColumnChanged() {
-    this.reload();
-  }
-
-  onColumnGroupChanged(): void {
-    const columns = this.grid.api.getColumns();
-    const isColumnGrouped = columns?.some((column) => column['rowGroupActive']) ?? false;
-    this.setVisibilityValuesSection(isColumnGrouped);
-  }
-
-  refreshGrid() {
-    if (!this.grid) {
-      return;
-    }
-    this.grid?.api.redrawRows();
-    this.reload();
-  }
-
   private setVisibilityValuesSection(visible: boolean): void {
     const columnToolPanel = this.grid.api.getToolPanelInstance('columns');
     if (columnToolPanel) {
       columnToolPanel.setValuesSectionVisible(visible);
     }
-  }
-
-  onRowDataUpdated(): void {
-    this.readSelectedRowsAndEmitThem();
   }
 }
