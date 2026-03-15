@@ -1,0 +1,19 @@
+{
+  "name": "@lxt/angular-components",
+  "version": "0.1.22",
+  "description": "LXTs Angular component library",
+  "author": "LXT",
+  "license": "SEE LICENSE IN LICENSE.md",
+  "peerDependencies": {
+    "@angular/common": ">=19.0.0",
+    "@angular/core": ">=19.0.0",
+    "ag-grid-angular": "^31.3.4",
+    "ag-grid-community": "^31.3.4",
+    "ag-grid-enterprise": "^31.3.4",
+    "fast-equals": "^5.0.1",
+    "ngx-mask": ">=19.0.0"
+  },
+  "dependencies": {
+    "tslib": "^2.3.1"
+  }
+}

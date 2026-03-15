@@ -1,0 +1,16 @@
+{
+  "$schema": "../../node_modules/ng-packagr/ng-package.schema.json",
+  "dest": "../../dist/libs/angular-components",
+  "lib": {
+    "entryFile": "index.ts"
+  },
+  "assets": [
+    "LICENSE.md",
+    "src/lib/styles.scss",
+    {
+      "input": "src/lib",
+      "glob": "{**/*.scss,fonts/*,validators/*}",
+      "output": "scss"
+    }
+  ]
+}
