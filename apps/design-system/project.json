@@ -4,6 +4,15 @@
   "projectType": "application",
   "sourceRoot": "apps/design-system/src",
   "prefix": "lxt-design-system",
+  "tags": ["type:app"],
+  "generators": {
+    "@nx/angular:component": {
+      "style": "scss"
+    },
+    "@schematics/angular:component": {
+      "style": "scss"
+    }
+  },
   "targets": {
     "build": {
       "executor": "@angular-devkit/build-angular:browser-esbuild",
@@ -56,7 +65,8 @@
           "buildTarget": "design-system:build:development"
         }
       },
-      "defaultConfiguration": "development"
+      "defaultConfiguration": "development",
+      "continuous": true
     },
     "extract-i18n": {
       "executor": "@angular-devkit/build-angular:extract-i18n",
@@ -70,15 +80,6 @@
       "options": {
         "lintFilePatterns": ["libs/angular-components/**/*.{ts,js,html,scss}", "libs/angular-components/package.json"]
       }
-    }
-  },
-  "tags": ["type:app"],
-  "generators": {
-    "@nx/angular:component": {
-      "style": "scss"
-    },
-    "@schematics/angular:component": {
-      "style": "scss"
     }
   }
 }
