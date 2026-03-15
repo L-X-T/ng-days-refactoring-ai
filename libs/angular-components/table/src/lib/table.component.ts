@@ -2,14 +2,14 @@ import 'ag-grid-enterprise';
 import {
   AfterViewInit,
   Component,
+  computed,
+  effect,
   ElementRef,
   HostListener,
   inject,
   input,
-  OnChanges,
-  OnInit,
   output,
-  SimpleChanges,
+  signal,
   ViewChild,
   ViewEncapsulation,
 } from '@angular/core';
@@ -65,7 +65,7 @@ import { BottomRowData, TableAggregationService } from './table-aggregation.serv
   encapsulation: ViewEncapsulation.ShadowDom,
   providers: [TableAggregationService],
 })
-export class TableComponent implements AfterViewInit, OnChanges, OnInit {
+export class TableComponent implements AfterViewInit {
   // 1. inject()
   private readonly aggregationService = inject(TableAggregationService);
 
@@ -98,17 +98,37 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   // 4. State
   bottomRowData: BottomRowData[] = [{}];
   appliedAggFuncs: { [key in Aggregation]?: boolean } = {};
-  columns: TableColumn[] = [];
-  rows: TableRow[] = [];
+  readonly columns = computed<TableColumn[]>(() => {
+    const tableData = this.tableData();
+    const translations = this.columnTranslations();
+    if (tableData?.columns?.length) {
+      return tableData.columns
+        .filter((col) => col.isVisible)
+        .map((col) => ({
+          ...col,
+          headerName: translations?.[col.localizerKey ?? ''] ?? col.field,
+          cellStyle: col.cellDataType === 'number' ? { textAlign: 'right' } : {},
+        }));
+    }
+    return this.componentDefaultColumns();
+  });
+  readonly rows = computed<TableRow[]>(() => {
+    const tableData = this.tableData();
+    return tableData?.rows?.length ? [...tableData.rows] : [];
+  });
   selectedRows: TableRow[] = [];
   selectedRowCount = 0;
-  selectionMessage = '';
-  showAggRow = false;
+  readonly selectionMessage = computed<string>(() => {
+    // Reactive on rows; actual displayed count is updated imperatively after grid is ready
+    const totalRowCount = this.rows().length ?? 0;
+    return `${totalRowCount} rows`;
+  });
+  readonly showAggRow = signal(false);
 
   // 5. Other members
   columnTypes!: { [key: string]: ColDef };
   defaultColDef!: ColDef;
-  rowHeight = 0;
+  readonly rowHeight = 30;
   paginationAutoPageSize = false; // [TODO] set true for mobile
   paginationNumberFormatter!: (params: PaginationNumberFormatterParams) => string;
   sideBar!: SideBarDef | string | string[] | boolean | null;
@@ -153,64 +173,78 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   private isAutoSized = false;
 
-  // Lifecycle hooks
-  ngOnInit(): void {
-    this.showAggRow = this.showAggRowInput();
+  constructor() {
     this.setUpGridOptions();
     this.setUpColumnTypes();
-    this.setUpPagination();
-    this.setUpRowHeight();
     this.setUpSideBar();
     this.setUpAutoSizing();
-    this.setUpAggRow();
-  }
 
-  ngAfterViewInit(): void {
-    this.setUpOnIntersection();
-  }
+    // Side effect: sync showAggRow signal from input
+    effect(() => {
+      this.showAggRow.set(this.showAggRowInput());
+    });
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes) {
-      const tableData: TableData = this.tableData();
-      if (tableData && changes['tableData']) {
-        if (tableData.columns?.length) {
-          this.setUpColumns(tableData);
-        }
-
-        // WARNING we need to update the rows via the grid API because only then the event
-        // onRowDataUpdated is emitted, which we need to propagate the current selection
-        // after a data reload
-        if (changes['tableData'].previousValue) {
-          this.grid.api.setGridOption('rowData', tableData.rows.length ? tableData.rows : []);
-        } else {
-          this.rows = tableData.rows?.length ? [...tableData.rows] : [];
-        }
+    // Side effect: update grid rowData when tableData changes (after first load)
+    effect(() => {
+      const tableData = this.tableData();
+      if (this.grid?.api && tableData) {
+        this.grid.api.setGridOption('rowData', tableData.rows?.length ? tableData.rows : []);
       }
-      if (changes['dateFormat']) {
+    });
+
+    // Side effect: refresh grid when dateFormat changes
+    effect(() => {
+      this.dateFormat(); // track
+      if (this.grid?.api) {
         this.refreshGrid();
       }
-      if (changes['isSelectionEnabled']) {
-        this.setSelection(this.isSelectionEnabled());
-      }
+    });
+
+    // Side effect: update selection when isSelectionEnabled changes
+    effect(() => {
+      const enabled = this.isSelectionEnabled();
       if (this.grid?.api) {
-        if (this.isLoading()) {
+        this.setSelection(enabled);
+      }
+    });
+
+    // Side effect: show/hide loading overlay
+    effect(() => {
+      const loading = this.isLoading();
+      if (this.grid?.api) {
+        if (loading) {
           this.grid.api.showLoadingOverlay();
         } else {
           this.grid.api.hideOverlay();
         }
       }
-    }
+    });
 
-    // If data has no rows currently no columns are returned, so we use the query params from the screen definition
-    if (!this.columns || this.columns?.length < 1) {
-      this.columns = this.componentDefaultColumns();
-    }
+    // Side effect: update column translations when they change
+    effect(() => {
+      const translations = this.columnTranslations();
+      if (this.grid?.api) {
+        this.grid.api.setGridOption('columnDefs', this.columns());
+      }
+    });
 
-    if (changes['columnTranslations'] && !changes['columnTranslations'].firstChange) {
-      this.updateColumnTranslations(this.columnTranslations());
-    }
+    // Side effect: pagination setup
+    effect(() => {
+      const pageSize = this.paginationPageSize();
+      const rowCount = this.rows().length;
+      if (pageSize && rowCount > pageSize) {
+        this.paginationNumberFormatter = (params: PaginationNumberFormatterParams) => params.value.toString();
+      }
+    });
 
-    this.prepareSelectionMessage();
+    // Side effect: autosize strategy reacts to columnsSizeStrategy input
+    effect(() => {
+      this.setUpAutoSizing();
+    });
+  }
+
+  ngAfterViewInit(): void {
+    this.setUpOnIntersection();
   }
 
   @HostListener('keydown', ['$event'])
@@ -250,7 +284,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   onSearch(searchTerm: string): void {
     this.grid.api.setQuickFilter(searchTerm);
-    this.prepareSelectionMessage();
   }
 
   onColumnChanged(): void {
@@ -294,24 +327,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     }, options);
 
     observer.observe(this.gridRef.nativeElement);
-  }
-
-  private setUpColumns(tableData: TableData): void {
-    this.columns = [
-      ...tableData.columns
-        .filter((col) => col.isVisible)
-        .map((col) => ({
-          ...col,
-          headerName: this.columnTranslations()?.[col.localizerKey ?? ''] ?? col.field,
-          cellStyle: col.cellDataType === 'number' ? { textAlign: 'right' } : {},
-        })),
-    ];
-  }
-
-  private updateColumnTranslations(translations: TableColumnTranslations): void {
-    this.columns = [
-      ...this.columns.map((col) => ({ ...col, headerName: translations[col.localizerKey ?? ''] ?? col.field })),
-    ];
   }
 
   private showIcon(aggFunc: Aggregation): string {
@@ -518,13 +533,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     }
   }
 
-  private setUpAggRow(): void {
-    if (!this.showAggRow) {
-      return;
-    }
-    this.bottomRowData = [{}];
-  }
-
   private addAggregation(aggType: Aggregation): void {
     this.appliedAggFuncs[aggType] = !this.appliedAggFuncs[aggType];
     if (!this.grid.columnDefs) {
@@ -547,7 +555,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
     this.bottomRowData = this.aggregationService.toggleAggregation(aggType, this.bottomRowData, columnEntries);
 
-    this.showAggRow = Object.keys(this.bottomRowData[0]).length > 0;
+    this.showAggRow.set(Object.keys(this.bottomRowData[0]).length > 0);
   }
 
   private setUpColumnTypes(): void {
@@ -663,17 +671,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     };
   }
 
-  private setUpPagination(): void {
-    const pageSize = this.paginationPageSize();
-    if (pageSize && this.rows?.length > pageSize) {
-      this.paginationNumberFormatter = (params: PaginationNumberFormatterParams) => params.value.toString();
-    }
-  }
-
-  private setUpRowHeight(): void {
-    this.rowHeight = 30; // [TODO]
-  }
-
   private setUpSideBar(): void {
     this.sideBar = {
       toolPanels: [
@@ -708,22 +705,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   private readSelectedRowsAndEmitThem(): void {
     this.selectedRows = this.grid.api.getSelectedRows();
     this.selectedRowCount = this.selectedRows ? this.selectedRows.length : 0;
-    this.prepareSelectionMessage();
     this.rowSelected.emit(this.selectedRows?.length ? this.selectedRows : []);
-  }
-
-  private prepareSelectionMessage(): void {
-    const totalRowCount = this.rows?.length ?? 0;
-    let rowCount = 0;
-    if (this.grid) {
-      rowCount = this.grid.api.getDisplayedRowCount();
-      if (rowCount > totalRowCount) {
-        rowCount = totalRowCount;
-      }
-    } else {
-      rowCount = totalRowCount;
-    }
-    this.selectionMessage = `${rowCount} rows`;
   }
 
   private selectFirstRow(): void {

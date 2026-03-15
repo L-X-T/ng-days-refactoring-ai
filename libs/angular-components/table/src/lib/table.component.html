@@ -1,6 +1,6 @@
 @if (toolbar()) {
   <lxt-toolbar
-    [infoMessage]="selectionMessage"
+    [infoMessage]="selectionMessage()"
     [selectedRowCount]="selectedRowCount"
     [selectedRows]="selectedRows"
     [toolbar]="toolbar()"
@@ -16,7 +16,7 @@
     [animateRows]="false"
     [autoSizeStrategy]="autoSizeStrategy"
     [class.grouping-disabled]="!allowRowGrouping()"
-    [columnDefs]="columns"
+    [columnDefs]="columns()"
     [columnMenu]="'new'"
     [columnTypes]="columnTypes"
     [defaultColDef]="defaultColDef"
@@ -28,9 +28,9 @@
     [pagination]="pagination()"
     [paginationPageSize]="paginationPageSize()"
     [paginationPageSizeSelector]="[20, 30, 40]"
-    [pinnedBottomRowData]="showAggRow ? bottomRowData : []"
+    [pinnedBottomRowData]="showAggRow() ? bottomRowData : []"
     [rowBuffer]="50"
-    [rowData]="rows"
+    [rowData]="rows()"
     [rowGroupPanelShow]="allowRowGrouping() ? rowGroupPanelShow() : 'never'"
     [rowHeight]="rowHeight"
     [rowSelection]="allowMultiSelection() ? 'multiple' : 'single'"
