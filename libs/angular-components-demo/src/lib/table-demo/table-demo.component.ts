@@ -5,6 +5,7 @@ import {
   ActionHierarchy,
   ActionType,
   FilterOperator,
+  TableColumn,
   TableColumnTranslations,
   TableComponent,
   TableData,
@@ -62,6 +63,7 @@ export class TableDemoComponent {
   allowRowGrouping = true;
 
   columnTranslations: TableColumnTranslations = USER_COLUMN_TRANSLATIONS_EN;
+  defaultColumns: TableColumn[] = USERS.columns as TableColumn[];
 
   private fb = inject(NonNullableFormBuilder);
 

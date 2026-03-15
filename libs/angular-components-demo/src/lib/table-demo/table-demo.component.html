@@ -9,9 +9,12 @@
     <lxt-table
       columnsSizeStrategy="fitGridWidth"
       rowGroupPanelShow="never"
+      [columnTranslations]="columnTranslations"
+      [componentDefaultColumns]="defaultColumns"
       [dateFormat]="renderersForm.controls.formatDate.value"
       [showAggRow]="true"
       [tableData]="cellDataTypes"
+      [toolbar]="realToolbar"
     />
   </div>
 
@@ -61,6 +64,8 @@
           [allowMultiSelection]="allowMultiSelection"
           [allowRowGrouping]="allowRowGrouping"
           [columnsSizeStrategy]="testForm.controls['columsWidth'].value"
+          [columnTranslations]="columnTranslations"
+          [componentDefaultColumns]="defaultColumns"
           [isSelectionEnabled]="isSelectionEnabled"
           [rowGroupPanelShow]="testForm.controls['rowGrouping'].value"
           [tableData]="users"
@@ -82,6 +87,7 @@
     <lxt-table
       columnsSizeStrategy="fitGridWidth"
       [columnTranslations]="columnTranslations"
+      [componentDefaultColumns]="defaultColumns"
       [showAggRow]="true"
       [tableData]="users"
       [toolbar]="realToolbar"
@@ -90,13 +96,25 @@
 
   <div class="container">
     <h2>Aggregations</h2>
-    <lxt-table [showAggRow]="true" [tableData]="aggregationUsers" />
+    <lxt-table
+      [columnTranslations]="columnTranslations"
+      [componentDefaultColumns]="defaultColumns"
+      [showAggRow]="true"
+      [tableData]="aggregationUsers"
+      [toolbar]="realToolbar"
+    />
   </div>
 
   <div class="container">
     <h2>Responsive</h2>
     <div style="height: 475px; width: 475px">
-      <lxt-table style="max-height: 100%" [tableData]="users" [toolbar]="realToolbar" />
+      <lxt-table
+        style="max-height: 100%"
+        [columnTranslations]="columnTranslations"
+        [componentDefaultColumns]="defaultColumns"
+        [tableData]="users"
+        [toolbar]="realToolbar"
+      />
     </div>
   </div>
 </main>
