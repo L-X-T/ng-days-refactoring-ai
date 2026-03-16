@@ -6,12 +6,12 @@ import {
   EventEmitter,
   HostListener,
   inject,
-  Input,
   OnChanges,
   OnInit,
   Output,
   SimpleChanges,
   ViewChild,
+  input
 } from '@angular/core';
 import { FormControl, ReactiveFormsModule } from '@angular/forms';
 
@@ -42,10 +42,10 @@ export class ToolbarComponent implements OnInit, OnChanges, AfterViewInit {
 
   filterAction: ToolbarAction | undefined;
 
-  @Input() toolbar!: Toolbar;
-  @Input() selectedRows: TableRow[] = [];
-  @Input() selectedRowCount = 0;
-  @Input() infoMessage = '';
+  readonly toolbar = input.required<Toolbar>();
+  readonly selectedRows = input<TableRow[]>([]);
+  readonly selectedRowCount = input(0);
+  readonly infoMessage = input('');
 
   @Output() actionExecuted = new EventEmitter<ToolbarAction>();
   @Output() searchExecuted = new EventEmitter<string>();
@@ -95,7 +95,7 @@ export class ToolbarComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   ngOnChanges(changes: SimpleChanges) {
-    this.filterAction = this.toolbar.actions.find((a) => a?.type === ActionType.Filter);
+    this.filterAction = this.toolbar().actions.find((a) => a?.type === ActionType.Filter);
     this.determineCallableStatus();
   }
 
@@ -111,7 +111,7 @@ export class ToolbarComponent implements OnInit, OnChanges, AfterViewInit {
   }
 
   private determineCallableStatus(): void {
-    this.toolbar.actions.forEach((action) => {
+    this.toolbar().actions.forEach((action) => {
       this.callableStatus[action.key as string] = this.isActionCallable(action);
     });
   }
@@ -120,19 +120,22 @@ export class ToolbarComponent implements OnInit, OnChanges, AfterViewInit {
     if (!action.minRecords && !action.maxRecords) {
       return true;
     } else if (action.minRecords && action.maxRecords) {
+      const selectedRowCount = this.selectedRowCount();
       if (
-        this.selectedRowCount &&
-        this.selectedRowCount >= action.minRecords &&
-        this.selectedRowCount <= action.maxRecords
+        selectedRowCount &&
+        selectedRowCount >= action.minRecords &&
+        selectedRowCount <= action.maxRecords
       ) {
         return this.checkExecutionConditions(action);
       }
     } else if (action.minRecords) {
-      if (this.selectedRowCount && this.selectedRowCount >= action.minRecords) {
+      const selectedRowCount = this.selectedRowCount();
+      if (selectedRowCount && selectedRowCount >= action.minRecords) {
         return this.checkExecutionConditions(action);
       }
     } else if (action.maxRecords) {
-      if (this.selectedRowCount && this.selectedRowCount <= action.maxRecords) {
+      const selectedRowCount = this.selectedRowCount();
+      if (selectedRowCount && selectedRowCount <= action.maxRecords) {
         return this.checkExecutionConditions(action);
       }
     }
@@ -144,19 +147,19 @@ export class ToolbarComponent implements OnInit, OnChanges, AfterViewInit {
     if (action.executionConditions.length < 1) {
       return true;
     }
-    if (this.selectedRows.length < 1) {
+    if (this.selectedRows().length < 1) {
       return false;
     }
 
     let matchCount = 0;
     action.executionConditions.forEach((condition) => {
       let rowMatchCount = 0;
-      this.selectedRows.forEach((row) => {
+      this.selectedRows().forEach((row) => {
         if (this.helperService.compareValues(row[condition.referenceColumn], condition.operator, condition.value)) {
           rowMatchCount++;
         }
       });
-      if (this.selectedRows.length === rowMatchCount) {
+      if (this.selectedRows().length === rowMatchCount) {
         matchCount++;
       }
     });
@@ -187,7 +190,7 @@ export class ToolbarComponent implements OnInit, OnChanges, AfterViewInit {
       this.actionLimit += Math.floor((availableSpace - usedSpace - 120) / avg);
     }
 
-    this.hasOverflow = this.actionLimit < this.toolbar.actions.length;
+    this.hasOverflow = this.actionLimit < this.toolbar().actions.length;
   }
 
   onExecuteAction(action: ToolbarAction): void {

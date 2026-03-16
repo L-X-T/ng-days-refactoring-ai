@@ -20,7 +20,6 @@ import {
   SizeColumnsToFitProvidedWidthStrategy,
 } from 'ag-grid-community';
 
-import { AGGREGATIONS_DATA } from './aggregation-data';
 import { CELLTYPES_DATA } from './cellTypes-data';
 
 export enum ScreenComponentType {
@@ -54,7 +53,6 @@ export type Strategy =
 })
 export class TableDemoComponent {
   users: TableData = USERS;
-  aggregationUsers: TableData = AGGREGATIONS_DATA;
   cellDataTypes: TableData = CELLTYPES_DATA;
   isSelectionEnabled = false;
   isStrategyReady = true;

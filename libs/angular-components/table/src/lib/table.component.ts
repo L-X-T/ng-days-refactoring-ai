@@ -5,7 +5,8 @@ import {
   ElementRef,
   EventEmitter,
   HostListener,
-  Input,
+  input,
+  model,
   OnChanges,
   OnInit,
   Output,
@@ -60,23 +61,23 @@ import { left } from '@popperjs/core';
   encapsulation: ViewEncapsulation.ShadowDom,
 })
 export class TableComponent implements AfterViewInit, OnChanges, OnInit {
-  @Input() tableData!: TableData;
-  @Input() toolbar!: Toolbar;
-  @Input() editRoute = '';
-  @Input() rowId = 'id';
-  @Input() rowHeight = 0;
-  @Input() allowMultiSelection!: boolean | undefined;
-  @Input() isLoading = false;
-  @Input() componentDefaultColumns!: TableColumn[];
-  @Input() columnTranslations!: TableColumnTranslations;
-  @Input() paginationPageSize: number | undefined = 20;
-  @Input() isSelectionEnabled = true;
-  @Input() columnsSizeStrategy: 'fitGridWidth' | 'fitCellContents' | 'fitProvidedWidth' = 'fitProvidedWidth';
-  @Input() rowGroupPanelShow: 'always' | 'onlyWhenGrouping' | 'never' | undefined = 'onlyWhenGrouping';
-  @Input() dateFormat = 'yyyy-MM-dd';
-  @Input() allowRowGrouping = true;
-  @Input() pagination = true;
-  @Input() primaryKeyColumns: string[] = [];
+  readonly tableData = input<TableData>();
+  readonly toolbar = input<Toolbar>();
+  readonly editRoute = input('');
+  readonly rowId = input('id');
+  readonly rowHeight = model(0);
+  readonly allowMultiSelection = input<boolean | undefined>(undefined);
+  readonly isLoading = input(false);
+  readonly componentDefaultColumns = input<TableColumn[]>([]);
+  readonly columnTranslations = input<TableColumnTranslations>();
+  readonly paginationPageSize = input<number | undefined>(20);
+  readonly isSelectionEnabled = model(true);
+  readonly columnsSizeStrategy = input<'fitGridWidth' | 'fitCellContents' | 'fitProvidedWidth'>('fitProvidedWidth');
+  readonly rowGroupPanelShow = input<'always' | 'onlyWhenGrouping' | 'never' | undefined>('onlyWhenGrouping');
+  readonly dateFormat = input('yyyy-MM-dd');
+  readonly allowRowGrouping = input(true);
+  readonly pagination = input(true);
+  readonly primaryKeyColumns = input<string[]>([]);
 
   @Output() actionExecuted = new EventEmitter<ToolbarAction>();
   @Output() rowSelected = new EventEmitter<TableRow[]>();
@@ -106,7 +107,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   getRowId: GetRowIdFunc<any> = (params) => {
     let rowId = '';
-    this.primaryKeyColumns.forEach((column) => {
+    this.primaryKeyColumns().forEach((column) => {
       if (rowId !== '') {
         rowId += '-';
       }
@@ -192,7 +193,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
     // If data has no rows currently no columns are returned, so we use the query params from the screen definition
     if (!this.columns || this.columns?.length < 1) {
-      this.columns = this.componentDefaultColumns;
+      this.columns = this.componentDefaultColumns();
     }
 
     if (changes['columnTranslations'] && !changes['columnTranslations'].firstChange) {
@@ -227,7 +228,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
         .filter((col) => col.isVisible)
         .map((col) => ({
           ...col,
-          headerName: this.columnTranslations?.[col.localizerKey ?? ''] ?? col.field,
+          headerName: this.columnTranslations()?.[col.localizerKey ?? ''] ?? col.field,
           cellStyle: col.cellDataType === 'number' ? { textAlign: 'right' } : {},
         })),
     ];
@@ -241,7 +242,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   private getMainMenuItems = (params: any) => {
     let items = params.defaultItems;
-    if (!this.allowRowGrouping) {
+    if (!this.allowRowGrouping()) {
       items = items.filter((item: any) => item !== 'rowGroup');
     }
     return items;
@@ -253,8 +254,9 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   private getRowContextMenu(): (string | MenuItemDef)[] {
     const result: (string | MenuItemDef)[] = [];
-    if (this.toolbar?.actions) {
-      for (const action of this.toolbar.actions) {
+    const toolbar = this.toolbar();
+    if (toolbar?.actions) {
+      for (const action of toolbar.actions) {
         result.push({
           icon: `<span class="icon i-lxt-${action.icon}"></span>`,
           name: action.key,
@@ -298,8 +300,8 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
       localeText: {
         values: 'Row groups values',
       },
-      suppressRowClickSelection: !this.isSelectionEnabled,
-      statusBar: this.pagination
+      suppressRowClickSelection: !this.isSelectionEnabled(),
+      statusBar: this.pagination()
         ? {
             statusPanels: [
               { statusPanel: PageSelectorComponent, align: 'left' },
@@ -332,10 +334,10 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   };
 
   private setSelection(selection: boolean): void {
-    this.isSelectionEnabled = selection;
+    this.isSelectionEnabled.set(selection);
     if (this.grid) {
       this.grid.api.updateGridOptions({
-        suppressRowClickSelection: !this.isSelectionEnabled,
+        suppressRowClickSelection: !this.isSelectionEnabled(),
       });
       this.refreshGrid();
     }
@@ -354,7 +356,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     this.defaultColDef = {
       checkboxSelection: (params) => {
         // If the row selection is disabled we do not want to show the redudant checkboxes
-        if (!this.isSelectionEnabled) {
+        if (!this.isSelectionEnabled()) {
           return false;
         }
         const displayedColumns = params.columnApi.getAllDisplayedColumns();
@@ -428,8 +430,8 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
           },
           params: {
             ...params,
-            columns: this.tableData.columns,
-            dateFormat: this.dateFormat,
+            columns: this.tableData()?.columns,
+            dateFormat: this.dateFormat(),
           },
         };
       },
@@ -456,13 +458,14 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   }
 
   private setUpPagination(): void {
-    if (this.paginationPageSize && this.rows?.length > this.paginationPageSize) {
+    const paginationPageSize = this.paginationPageSize();
+    if (paginationPageSize && this.rows?.length > paginationPageSize) {
       this.paginationNumberFormatter = (params: any) => params.value.toString();
     }
   }
 
   private setUpRowHeight(): void {
-    this.rowHeight = 30; // [TODO]
+    this.rowHeight.set(30); // [TODO]
   }
 
   private setUpSideBar(): void {
@@ -484,7 +487,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   }
 
   private setUpAutoSizing(): void {
-    switch (this.columnsSizeStrategy) {
+    switch (this.columnsSizeStrategy()) {
       case 'fitCellContents':
         this.autoSizeStrategy = {
           type: 'fitCellContents',
@@ -536,7 +539,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     if (this.grid) {
       const rowModel = this.grid.api.getModel();
       const firstRowNode = rowModel.getRow(0);
-      if (firstRowNode && this.isSelectionEnabled) {
+      if (firstRowNode && this.isSelectionEnabled()) {
         firstRowNode.setSelected(true);
       }
     }

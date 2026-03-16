@@ -15,7 +15,7 @@
       <div class="divider"></div>
     }
     <div #actionslist class="actions-list">
-      @for (action of toolbar.actions | limit: actionLimit; track action) {
+      @for (action of toolbar().actions | limit: actionLimit; track action) {
         @if (action?.type !== ActionType.Filter) {
           <button
             class="actions-list__item"
@@ -33,7 +33,7 @@
       }
     </div>
   </div>
-  @if (toolbar.actions.length > 0 && hasOverflow) {
+  @if (toolbar().actions.length > 0 && hasOverflow) {
     <div class="actions-menu-wrapper">
       <button
         #actionsMenuToggle
@@ -45,7 +45,7 @@
         <span class="icon i-lxt-more"></span>
       </button>
       <div #actionsMenu class="actions-menu" [style.display]="actionsMenuOpen ? 'flex' : 'none'">
-        @for (action of toolbar.actions; track action) {
+        @for (action of toolbar().actions; track action) {
           <!-- [TODO] Use a dedicated context menu component for this -->
           <button
             lxt-button
@@ -66,7 +66,7 @@
 </div>
 
 <div class="search-side">
-  <div class="info flex-item">{{ infoMessage }}</div>
+  <div class="info flex-item">{{ infoMessage() }}</div>
 
   <div class="search flex-item">
     <form>
