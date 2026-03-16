@@ -46,7 +46,6 @@
     --ag-icon-font-code-grip: var(--i-lxt-grip);
     --ag-icon-font-code-columns: var(--i-lxt-layout-columns);
     --ag-icon-font-code-settings: var(--i-lxt-settings);
-    --ag-icon-font-code-aggregation: var(--i-lxt-sigma);
     --ag-icon-font-code-group: var(--i-lxt-lxt-table-group-area);
     --ag-icon-font-code-cancel: var(--i-lxt-close);
     --ag-icon-font-code-cut: var(--i-lxt-cut);
@@ -424,30 +423,6 @@
       margin: var(--g-spacing-x2);
     }
 
-    .ag-floating-bottom {
-      height: auto !important;
-
-      .ag-row-hover .ag-cell {
-        background-color: var(--c-neutral50);
-      }
-    }
-
-    .ag-floating-bottom-viewport {
-      background-color: var(--c-neutral50);
-
-      .ag-row-pinned {
-        background-color: inherit;
-
-        .ag-cell {
-          border-right: 1px solid var(--c-neutral200);
-          border-top: 1px solid var(--c-neutral200);
-
-          &.ag-cell-focus {
-            border: 1px solid var(--c-neutral200);
-          }
-        }
-      }
-    }
   }
 
   .cell--center {
