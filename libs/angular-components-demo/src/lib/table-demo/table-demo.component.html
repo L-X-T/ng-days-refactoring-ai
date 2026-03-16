@@ -10,7 +10,6 @@
       columnsSizeStrategy="fitGridWidth"
       rowGroupPanelShow="never"
       [dateFormat]="renderersForm.controls.formatDate.value"
-      [showAggRow]="true"
       [tableData]="cellDataTypes"
     />
   </div>
@@ -82,7 +81,6 @@
     <lxt-table
       columnsSizeStrategy="fitGridWidth"
       [columnTranslations]="columnTranslations"
-      [showAggRow]="true"
       [tableData]="users"
       [toolbar]="realToolbar"
     />
@@ -90,7 +88,7 @@
 
   <div class="container">
     <h2>Aggregations</h2>
-    <lxt-table [showAggRow]="true" [tableData]="aggregationUsers" />
+    <lxt-table [tableData]="aggregationUsers" />
   </div>
 
   <div class="container">
