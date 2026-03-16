@@ -3,15 +3,14 @@ import {
   AfterViewInit,
   Component,
   ElementRef,
-  EventEmitter,
   HostListener,
   input,
   model,
   OnChanges,
   OnInit,
-  Output,
+  output,
   SimpleChanges,
-  ViewChild,
+  viewChild,
   ViewEncapsulation,
 } from '@angular/core';
 import { FormsModule, ReactiveFormsModule } from '@angular/forms';
@@ -79,11 +78,11 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   readonly pagination = input(true);
   readonly primaryKeyColumns = input<string[]>([]);
 
-  @Output() actionExecuted = new EventEmitter<ToolbarAction>();
-  @Output() rowSelected = new EventEmitter<TableRow[]>();
+  readonly actionExecuted = output<ToolbarAction>();
+  readonly rowSelected = output<TableRow[]>();
 
-  @ViewChild('myGrid') grid!: AgGridAngular;
-  @ViewChild('myGrid', { read: ElementRef }) gridRef!: ElementRef;
+  readonly grid = viewChild.required<AgGridAngular>('myGrid');
+  readonly gridRef = viewChild.required<ElementRef>('myGrid', { read: ElementRef });
 
   columns: TableColumn[] = [];
   rows: TableRow[] = [];
@@ -140,16 +139,16 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
     switch (event.key) {
       case 'Home':
-        this.grid.api.paginationGoToFirstPage();
+        this.grid().api.paginationGoToFirstPage();
         break;
       case 'End':
-        this.grid.api.paginationGoToLastPage();
+        this.grid().api.paginationGoToLastPage();
         break;
       case 'ArrowLeft':
-        this.grid.api.paginationGoToPreviousPage();
+        this.grid().api.paginationGoToPreviousPage();
         break;
       case 'ArrowRight':
-        this.grid.api.paginationGoToNextPage();
+        this.grid().api.paginationGoToNextPage();
         break;
       default:
         return;
@@ -169,7 +168,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
         // onRowDataUpdated is emitted, which we need to propagate the current selection
         // after a data reload
         if (changes['tableData'].previousValue) {
-          this.grid.api.setGridOption('rowData', tableData.rows.length ? tableData.rows : []);
+          this.grid().api.setGridOption('rowData', tableData.rows.length ? tableData.rows : []);
         } else {
           this.rows = tableData.rows?.length ? [...tableData.rows] : [];
         }
@@ -182,11 +181,11 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
       if (selection) {
         this.setSelection(selection.currentValue);
       }
-      if (this.grid?.api) {
+      if (this.grid()?.api) {
         if (changes['isLoading']?.currentValue === true) {
-          this.grid.api.showLoadingOverlay();
+          this.grid().api.showLoadingOverlay();
         } else {
-          this.grid.api.hideOverlay();
+          this.grid().api.hideOverlay();
         }
       }
     }
@@ -211,7 +210,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     const observer = new IntersectionObserver((entries, observer) => {
       entries.forEach((entry) => {
         if (!this.isAutoSized && entry.intersectionRatio > 0) {
-          this.grid.api.autoSizeAllColumns();
+          this.grid().api.autoSizeAllColumns();
           this.isAutoSized = true;
           observer.disconnect();
           return;
@@ -219,7 +218,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
       });
     }, options);
 
-    observer.observe(this.gridRef.nativeElement);
+    observer.observe(this.gridRef().nativeElement);
   }
 
   private setUpColumns(tableData: TableData) {
@@ -317,7 +316,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   onCellContextMenu = () => {
     setTimeout(() => {
-      const menu = this.gridRef.nativeElement.querySelector('.ag-menu') as HTMLElement;
+      const menu = this.gridRef().nativeElement.querySelector('.ag-menu') as HTMLElement;
       if (!menu) {
         return;
       }
@@ -325,7 +324,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
       const viewportHeight = window.innerHeight;
 
       if (menuRect.bottom > viewportHeight) {
-        const gridElement = this.gridRef.nativeElement;
+        const gridElement = this.gridRef().nativeElement;
         const gridHeight = gridElement.offsetHeight - (gridElement.getBoundingClientRect().bottom - viewportHeight);
         const top = Math.floor(Math.max(0, gridHeight - (menuRect.height + 16)));
         menu.style.top = `${top}px`;
@@ -335,19 +334,17 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   private setSelection(selection: boolean): void {
     this.isSelectionEnabled.set(selection);
-    if (this.grid) {
-      this.grid.api.updateGridOptions({
-        suppressRowClickSelection: !this.isSelectionEnabled(),
-      });
-      this.refreshGrid();
-    }
+    this.grid().api.updateGridOptions({
+      suppressRowClickSelection: !this.isSelectionEnabled(),
+    });
+    this.refreshGrid();
   }
 
   protected reload(): void {
-    if (this.grid.api.getDisplayedRowCount() === 0) {
-      this.grid.api.showNoRowsOverlay();
+    if (this.grid().api.getDisplayedRowCount() === 0) {
+      this.grid().api.showNoRowsOverlay();
     } else {
-      this.grid.api.hideOverlay();
+      this.grid().api.hideOverlay();
     }
   }
 
@@ -511,7 +508,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   }
 
   private readSelectedRowsAndEmitThem(): void {
-    this.selectedRows = this.grid.api.getSelectedRows();
+    this.selectedRows = this.grid().api.getSelectedRows();
     this.selectedRowCount = this.selectedRows ? this.selectedRows.length : 0;
     this.prepareSelectionMessage();
     this.rowSelected.emit(this.selectedRows?.length ? this.selectedRows : []);
@@ -520,12 +517,8 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   private prepareSelectionMessage(): void {
     const totalRowCount = this.rows?.length ?? 0;
     let rowCount = 0;
-    if (this.grid) {
-      rowCount = this.grid.api.getDisplayedRowCount();
-      if (rowCount > totalRowCount) {
-        rowCount = totalRowCount;
-      }
-    } else {
+    rowCount = this.grid().api.getDisplayedRowCount();
+    if (rowCount > totalRowCount) {
       rowCount = totalRowCount;
     }
     this.selectionMessage = `${rowCount} rows`;
@@ -536,17 +529,15 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   }
 
   private selectFirstRow(): void {
-    if (this.grid) {
-      const rowModel = this.grid.api.getModel();
-      const firstRowNode = rowModel.getRow(0);
-      if (firstRowNode && this.isSelectionEnabled()) {
-        firstRowNode.setSelected(true);
-      }
+    const rowModel = this.grid().api.getModel();
+    const firstRowNode = rowModel.getRow(0);
+    if (firstRowNode && this.isSelectionEnabled()) {
+      firstRowNode.setSelected(true);
     }
   }
 
   onSearch(searchTerm: string): void {
-    this.grid.api.setQuickFilter(searchTerm);
+    this.grid().api.setQuickFilter(searchTerm);
     this.prepareSelectionMessage();
   }
 
@@ -555,21 +546,18 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   }
 
   onColumnGroupChanged(): void {
-    const columns = this.grid.api.getColumns();
+    const columns = this.grid().api.getColumns();
     const isColumnGrouped = columns?.some((column) => column['rowGroupActive']) ?? false;
     this.setVisibilityValuesSection(isColumnGrouped);
   }
 
   refreshGrid() {
-    if (!this.grid) {
-      return;
-    }
-    this.grid?.api.redrawRows();
+    this.grid().api.redrawRows();
     this.reload();
   }
 
   private setVisibilityValuesSection(visible: boolean): void {
-    const columnToolPanel = this.grid.api.getToolPanelInstance('columns');
+    const columnToolPanel = this.grid().api.getToolPanelInstance('columns');
     if (columnToolPanel) {
       columnToolPanel.setValuesSectionVisible(visible);
     }
