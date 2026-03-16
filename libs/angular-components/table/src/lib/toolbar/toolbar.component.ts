@@ -25,7 +25,7 @@ import { LimitPipe } from '../limit.pipe';
 
 @Component({
   host: {
-    '(document:click)': 'onClick($event)',
+    // '(document:click)': 'onClick($event)',
   },
   imports: [ButtonComponent, ReactiveFormsModule, LimitPipe],
   selector: 'lxt-toolbar',
@@ -54,7 +54,7 @@ export class ToolbarComponent implements OnInit, OnChanges, AfterViewInit {
   @ViewChild('actionslist') actionsList!: ElementRef;
   @ViewChild('actionsMenuToggle', { read: ElementRef }) actionsMenuToggle!: ElementRef;
 
-  @HostListener('window:resize', ['$event'])
+  @HostListener('window:resize')
   onResize() {
     this.detectOverflow();
   }
