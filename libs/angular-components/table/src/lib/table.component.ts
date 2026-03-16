@@ -82,7 +82,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   readonly rowSelected = output<TableRow[]>();
 
   readonly grid = viewChild.required<AgGridAngular>('myGrid');
-  readonly gridRef = viewChild.required<ElementRef>('myGrid', { read: ElementRef });
+  readonly gridRef = viewChild.required('myGrid', { read: ElementRef });
 
   columns: TableColumn[] = [];
   rows: TableRow[] = [];
