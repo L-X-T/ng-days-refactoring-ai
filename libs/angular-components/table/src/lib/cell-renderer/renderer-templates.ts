@@ -1,26 +1,17 @@
 import { DatePipe } from '@angular/common';
-
-export function renderBooleanTemplate(value: any, aggFunc: string): string {
-  if (aggFunc !== 'count' && aggFunc !== 'count_d' && aggFunc !== 'sum') {
-    return value
-      ? '<span class="icon i-lxt-check cell--center"></span>'
-      : '<span class="icon i-lxt-cancel cell--center"></span>';
-  } else {
-    return `<span>${value}</span>`;
-  }
+export function renderBooleanTemplate(value: any): string {
+  return value
+    ? '<span class="icon i-lxt-check cell--center"></span>'
+    : '<span class="icon i-lxt-cancel cell--center"></span>';
 }
-
 export function renderTextTemplate(value: any): string {
   return `<span>${value}</span>`;
 }
-
 export function renderNumberTemplate(value: any): string {
   return `<span class="cell--right">${value}</span>`;
 }
-
-export function renderCheckboxTemplate(value: any, aggFunc: string): string {
-  if (aggFunc !== 'count' && aggFunc !== 'count_d' && aggFunc !== 'sum') {
-    return `
+export function renderCheckboxTemplate(value: any): string {
+  return `
       <div class="ag-selection-checkbox cell--checkbox " role="presentation">
                 <!--AG-CHECKBOX--><div role="presentation" ref="eCheckbox" class="ag-labeled ag-label-align-right ag-checkbox ag-input-field">
                 <div ref="eLabel" class="ag-input-field-label ag-label ag-hidden ag-checkbox-label" aria-hidden="true" role="presentation" id="ag-4271-label"></div>
@@ -31,29 +22,15 @@ export function renderCheckboxTemplate(value: any, aggFunc: string): string {
                 </div>
             </div>
             </div>`;
-  } else {
-    return `<span>${value}</span>`;
-  }
 }
-
-export function renderDateTemplate(value: any, aggFunc: string, dateFormat: string): string {
+export function renderDateTemplate(value: any, dateFormat: string): string {
   const datePipe: DatePipe = new DatePipe('en-US');
-  if (aggFunc !== 'count' && aggFunc !== 'count_d') {
-    return `<span>${datePipe.transform(value, dateFormat)}</span>`;
-  } else {
-    return `<span>${value}</span>`;
-  }
+  return `<span>${datePipe.transform(value, dateFormat)}</span>`;
 }
-
-export function renderOrdinalNumberTemplate(value: any, aggFunc: string): string {
-  if (aggFunc !== 'count' && aggFunc !== 'count_d' && aggFunc !== 'sum') {
-    return `<span class="cell--right">${value}.</span>`;
-  } else {
-    return `<span class="cell--right">${value}</span>`;
-  }
+export function renderOrdinalNumberTemplate(value: any): string {
+  return `<span class="cell--right">${value}.</span>`;
 }
-
-export function renderStatusTemplate(value: string, aggFunc: string): string {
+export function renderStatusTemplate(value: string): string {
   switch (value) {
     case 'ready':
       return `
@@ -104,31 +81,21 @@ export function renderStatusTemplate(value: string, aggFunc: string): string {
           <span>Error</span>
         </div>`;
     default:
-      if (aggFunc !== 'count' && aggFunc !== 'count_d') {
-        return `
+      return `
           <div class="status-ellipse status--unknown">
           <span class="icon i-lxt-status-unkown">
           </span>
           <span>Unknown
           </span>
           </div>`;
-      } else {
-        return `<span>${value}</span>`;
-      }
   }
 }
-
-export function renderProgressTemplate(value: any, aggFunc: string): string {
-  if (aggFunc !== 'count' && aggFunc !== 'count_d') {
-    return `
+export function renderProgressTemplate(value: any): string {
+  return `
       <div class="progress-bar" style="width: ${value}%;">
         <span>${value}%</span>
       </div>`;
-  } else {
-    return `<span>${value}</span>`;
-  }
 }
-
 export function renderDefaultTemplate(value: any): string {
   return `<span>${value}</span>`;
 }

@@ -13,18 +13,6 @@ export enum Types {
   integer = 1 << 8,
 }
 
-export enum AggregationFlags {
-  min = 1,
-  max = 1 << 2,
-  sum = 1 << 3,
-  avg = 1 << 4,
-  first = 1 << 5,
-  last = 1 << 6,
-  count = 1 << 6,
-  count_d = 1 << 8,
-  median = 1 << 8,
-}
-
 export class BitMask {
   constructor(flags = 0) {
     this.setFlag(flags);
