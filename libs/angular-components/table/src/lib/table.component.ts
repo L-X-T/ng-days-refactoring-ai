@@ -1,15 +1,15 @@
 import 'ag-grid-enterprise';
 import {
-  AfterViewInit,
+  afterNextRender,
   Component,
+  computed,
+  effect,
   ElementRef,
   HostListener,
   input,
   model,
-  OnChanges,
-  OnInit,
   output,
-  SimpleChanges,
+  signal,
   viewChild,
   ViewEncapsulation,
 } from '@angular/core';
@@ -59,7 +59,8 @@ import { left } from '@popperjs/core';
   styleUrls: ['./table.component.scss'],
   encapsulation: ViewEncapsulation.ShadowDom,
 })
-export class TableComponent implements AfterViewInit, OnChanges, OnInit {
+export class TableComponent {
+  // Inputs
   readonly tableData = input<TableData>();
   readonly toolbar = input<Toolbar>();
   readonly editRoute = input('');
@@ -78,21 +79,48 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   readonly pagination = input(true);
   readonly primaryKeyColumns = input<string[]>([]);
 
+  // Outputs
   readonly actionExecuted = output<ToolbarAction>();
   readonly rowSelected = output<TableRow[]>();
 
+  // View queries
   readonly grid = viewChild.required<AgGridAngular>('myGrid');
   readonly gridRef = viewChild.required('myGrid', { read: ElementRef });
 
-  columns: TableColumn[] = [];
-  rows: TableRow[] = [];
+  // Computed state derived from inputs
+  readonly columns = computed<TableColumn[]>(() => {
+    const tableData = this.tableData();
+    const translations = this.columnTranslations();
+    const defaultColumns = this.componentDefaultColumns();
+
+    if (tableData?.columns?.length) {
+      return tableData.columns
+        .filter((col) => col.isVisible)
+        .map((col) => ({
+          ...col,
+          headerName: translations?.[col.localizerKey ?? ''] ?? col.field,
+          cellStyle: col.cellDataType === 'number' ? { textAlign: 'right' } : {},
+        }));
+    }
+
+    return defaultColumns;
+  });
+
+  readonly rows = computed<TableRow[]>(() => {
+    const tableData = this.tableData();
+    return tableData?.rows?.length ? [...tableData.rows] : [];
+  });
+
+  // Mutable signals (grid-driven state)
+  readonly selectedRows = signal<TableRow[]>([]);
+  readonly selectedRowCount = signal(0);
+  readonly selectionMessage = signal('');
+
+  // Grid configuration (initialised once)
   columnTypes!: { [key: string]: ColDef };
   defaultColDef!: ColDef;
   paginationAutoPageSize = false; // [TODO] set true for mobile
   paginationNumberFormatter!: (params: PaginationNumberFormatterParams<any, any>) => string;
-  selectedRows: TableRow[] = [];
-  selectedRowCount = 0;
-  selectionMessage = '';
   sideBar!: SideBarDef | string | string[] | boolean | null;
   gridOptions!: GridOptions;
   autoSizeStrategy!:
@@ -117,17 +145,43 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
 
   private isAutoSized = false;
 
-  ngOnInit(): void {
+  constructor() {
+    // Initialise grid configuration once (replaces ngOnInit)
     this.setUpGridOptions();
     this.setUpColumnTypes();
-    this.setUpPagination();
     this.setUpRowHeight();
     this.setUpSideBar();
     this.setUpAutoSizing();
-  }
 
-  ngAfterViewInit(): void {
-    this.setUpOnIntersection();
+    // Set up intersection observer after the view is rendered (replaces ngAfterViewInit)
+    afterNextRender(() => {
+      this.setUpOnIntersection();
+    });
+
+    // Side-effect: sync loading overlay and selection with grid API
+    effect(() => {
+      const loading = this.isLoading();
+      const selectionEnabled = this.isSelectionEnabled();
+      const grid = this.grid();
+
+      if (grid?.api) {
+        if (loading) {
+          grid.api.showLoadingOverlay();
+        } else {
+          grid.api.hideOverlay();
+        }
+        grid.api.updateGridOptions({ suppressRowClickSelection: !selectionEnabled });
+        this.refreshGrid();
+      }
+    });
+
+    // Side-effect: refresh cell rendering when the date format changes
+    effect(() => {
+      this.dateFormat(); // track
+      if (this.grid()?.api) {
+        this.refreshGrid();
+      }
+    });
   }
 
   @HostListener('keydown', ['$event'])
@@ -156,52 +210,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     event.preventDefault();
   }
 
-  ngOnChanges(changes: SimpleChanges): void {
-    if (changes) {
-      const tableData: TableData = changes['tableData']?.currentValue;
-      if (tableData) {
-        if (tableData.columns?.length) {
-          this.setUpColumns(tableData);
-        }
-
-        // WARNING we need to update the rows via the grid API because only then the event
-        // onRowDataUpdated is emitted, which we need to propagate the current selection
-        // after a data reload
-        if (changes['tableData'].previousValue) {
-          this.grid().api.setGridOption('rowData', tableData.rows.length ? tableData.rows : []);
-        } else {
-          this.rows = tableData.rows?.length ? [...tableData.rows] : [];
-        }
-      }
-      const dateFormat = changes['dateFormat'];
-      if (dateFormat) {
-        this.refreshGrid();
-      }
-      const selection = changes['isSelectionEnabled'];
-      if (selection) {
-        this.setSelection(selection.currentValue);
-      }
-      if (this.grid()?.api) {
-        if (changes['isLoading']?.currentValue === true) {
-          this.grid().api.showLoadingOverlay();
-        } else {
-          this.grid().api.hideOverlay();
-        }
-      }
-    }
-
-    // If data has no rows currently no columns are returned, so we use the query params from the screen definition
-    if (!this.columns || this.columns?.length < 1) {
-      this.columns = this.componentDefaultColumns();
-    }
-
-    if (changes['columnTranslations'] && !changes['columnTranslations'].firstChange) {
-      this.updateColumnTranslations(changes['columnTranslations'].currentValue);
-    }
-
-    this.prepareSelectionMessage();
-  }
-
   private setUpOnIntersection() {
     const options: IntersectionObserverInit = {
       root: document.documentElement,
@@ -221,24 +229,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     observer.observe(this.gridRef().nativeElement);
   }
 
-  private setUpColumns(tableData: TableData) {
-    this.columns = [
-      ...tableData.columns
-        .filter((col) => col.isVisible)
-        .map((col) => ({
-          ...col,
-          headerName: this.columnTranslations()?.[col.localizerKey ?? ''] ?? col.field,
-          cellStyle: col.cellDataType === 'number' ? { textAlign: 'right' } : {},
-        })),
-    ];
-  }
-
-  private updateColumnTranslations(translations: TableColumnTranslations) {
-    this.columns = [
-      ...this.columns.map((col) => ({ ...col, headerName: translations[col.localizerKey ?? ''] ?? col.field })),
-    ];
-  }
-
   private getMainMenuItems = (params: any) => {
     let items = params.defaultItems;
     if (!this.allowRowGrouping()) {
@@ -247,7 +237,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     return items;
   };
 
-  private getContextMenuItems = (params: any) => {
+  private getContextMenuItems = (_params: any) => {
     return this.getRowContextMenu();
   };
 
@@ -332,14 +322,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     }, 0);
   };
 
-  private setSelection(selection: boolean): void {
-    this.isSelectionEnabled.set(selection);
-    this.grid().api.updateGridOptions({
-      suppressRowClickSelection: !this.isSelectionEnabled(),
-    });
-    this.refreshGrid();
-  }
-
   protected reload(): void {
     if (this.grid().api.getDisplayedRowCount() === 0) {
       this.grid().api.showNoRowsOverlay();
@@ -352,7 +334,7 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     // Setting properties across ALL Columns
     this.defaultColDef = {
       checkboxSelection: (params) => {
-        // If the row selection is disabled we do not want to show the redudant checkboxes
+        // If the row selection is disabled we do not want to show the redundant checkboxes
         if (!this.isSelectionEnabled()) {
           return false;
         }
@@ -454,13 +436,6 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
     };
   }
 
-  private setUpPagination(): void {
-    const paginationPageSize = this.paginationPageSize();
-    if (paginationPageSize && this.rows?.length > paginationPageSize) {
-      this.paginationNumberFormatter = (params: any) => params.value.toString();
-    }
-  }
-
   private setUpRowHeight(): void {
     this.rowHeight.set(30); // [TODO]
   }
@@ -508,23 +483,23 @@ export class TableComponent implements AfterViewInit, OnChanges, OnInit {
   }
 
   private readSelectedRowsAndEmitThem(): void {
-    this.selectedRows = this.grid().api.getSelectedRows();
-    this.selectedRowCount = this.selectedRows ? this.selectedRows.length : 0;
+    const selected = this.grid().api.getSelectedRows();
+    this.selectedRows.set(selected);
+    this.selectedRowCount.set(selected ? selected.length : 0);
     this.prepareSelectionMessage();
-    this.rowSelected.emit(this.selectedRows?.length ? this.selectedRows : []);
+    this.rowSelected.emit(selected?.length ? selected : []);
   }
 
   private prepareSelectionMessage(): void {
-    const totalRowCount = this.rows?.length ?? 0;
-    let rowCount = 0;
-    rowCount = this.grid().api.getDisplayedRowCount();
+    const totalRowCount = this.rows()?.length ?? 0;
+    let rowCount = this.grid().api.getDisplayedRowCount();
     if (rowCount > totalRowCount) {
       rowCount = totalRowCount;
     }
-    this.selectionMessage = `${rowCount} rows`;
+    this.selectionMessage.set(`${rowCount} rows`);
   }
 
-  onFirstDataRendered(params: FirstDataRenderedEvent): void {
+  onFirstDataRendered(_params: FirstDataRenderedEvent): void {
     this.selectFirstRow();
   }
 
