@@ -1,5 +1,5 @@
 # Copilot Instructions
 
-Follow /AGENTS.md as the primary repository instructions.
+Follow `../AGENTS.md` as the primary repository instructions.
 
 ## Copilot-specific

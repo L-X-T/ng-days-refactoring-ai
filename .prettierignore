@@ -1,11 +1,4 @@
-# Add files here to ignore them from prettier formatting
-
-.angular
+/.angular
 /coverage
 /dist
-node_modules
-package.json
-package-lock.json
-
-/.nx/cache
-/.nx/workspace-data
+/node_modules

@@ -1,6 +1,6 @@
 # SCSS Style Guide
 
-Last updated on 2024-11-18.
+Last updated on 2026-05-19.
 
 This document contains guidelines for _Angular_ styling (SCSS) files.
 
@@ -9,24 +9,22 @@ This document contains guidelines for _Angular_ styling (SCSS) files.
 ### Must do
 
 - use [**Prettier**](https://prettier.io/)
-- use [**Stylelint**](https://stylelint.io/)
 - use **SCSS**
 - use **strict formatting**
-  - use **2 spaces intents** (Prettier)
+  - use **2 spaces indents** (Prettier)
   - use **`'single quotes'`** (Prettier)
   - use **1 selector per line** (Prettier)
   - use **1 property per line** (Prettier)
   - use **`dash-separated-lowercase`** for selectors
-  - separate rules by new lines (Stylelint)
   - use meaningful empty lines to separate code
   - put a blank line (two line breaks) between rules
-- order properties alphabetically (Stylelint)
 - use classes or element-names (component selectors), avoid ids
 - if `ViewEncapsulation.None` a prefix must be used
   - project specific prefix
   - but not to CSS custom properties
 - max 2, in rare cases 3 nested selectors
-- prefer using global CSS custom properties
+- use global CSS custom properties for design tokens
+- use component-private CSS custom properties on `:host` for component-specific styling knobs
 - prefer component-specific styles for component style
 - use global styles for global styles only
 - use shorthand or intrinsic wherever possible and useful
@@ -36,11 +34,14 @@ This document contains guidelines for _Angular_ styling (SCSS) files.
 - explicitly write the 0 (Prettier)
   - `margin: 0.5em;`
 - use `@use` and `@forward` instead of deprecated `@import`
-- use `rem` or `em` for typography instead of `px` (Accessibility)
+- use `rem` for typography instead of `px`
 
 ### Should do
 
 - write less & simple SCSS
+- use [**Stylelint**](https://stylelint.io/) if the project has a Stylelint config
+  - separate rules by new lines
+  - order properties alphabetically if configured
 - use BEM syntax (Block, Element, Modifier)
   - `.lxt-person {}`
   - `.lxt-person__head {}`
@@ -53,26 +54,25 @@ This document contains guidelines for _Angular_ styling (SCSS) files.
   - 4.) Mixins
   - 5.) Objects
   - 6.) Variants
-- use hsl()/hsla() colors (via custom properties)
 - prefer CSS logical properties (e.g., `margin-inline-start`) over physical properties (`margin-left`)
 
 ## Don't
 
-- try to **avoid inline styles** - it may become a CSP issue
-- try to **avoid `!important`** - it's a bad habit, believe me
-- try to **avoid using existing library classes** - use prefixed classes instead
+- avoid inline styles - it may become a CSP issue
+- avoid `!important` - it's a bad habit, believe me
+- avoid using existing library classes - use prefixed classes instead
   - (e.g. don't use `.heading`, `.label` or `.form-control`)
   - only use those classes to override the lib's own CSS
-- try to avoid nesting with more than 2 levels (in rare cases 3)
+- avoid nesting with more than 2 levels (in rare cases 3)
   - okay: `.lxt-is-home .lxt-person`
   - hell no: `body.lxt-is-home .lxt-person.lxt-is-disabled > .lxt-avatar`
   - use modifier instead: `.lxt-avatar--disabled`
-- try to avoid defining colors in components (use custom properties)
-- try to avoid `float` use CSS grid or flexbox instead
+- avoid defining raw colors in components (use design tokens or component-private custom properties)
+- avoid `float` use CSS grid or flexbox instead
   - howto [choose between grid and flexbox](https://medium.com/youstart-labs/beginners-guide-to-choose-between-css-grid-and-flexbox-783005dd2412)
-- try to avoid writing properties which could be shorthanded (e.g., margin)
-- try to avoid `&` to nest styles (for better readability)
-- try to avoid using `::ng-deep` as it is deprecated (use CSS custom properties instead)
+- avoid writing properties which could be shorthanded (e.g., margin)
+- avoid `&` to nest styles (for better readability)
+- avoid using `::ng-deep` as it is deprecated (use CSS custom properties instead)
 
 ## Resources
 
@@ -85,4 +85,4 @@ This document contains guidelines for _Angular_ styling (SCSS) files.
 
 ## Back to index
 
-- Angular [coding style guide](style-guide.md)
+- [Angular Coding Style Guide](style-guide.md)

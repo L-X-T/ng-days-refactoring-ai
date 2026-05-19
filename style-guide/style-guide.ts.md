@@ -1,6 +1,6 @@
 # TypeScript Style Guide
 
-Last updated on 2024-11-18.
+Last updated on 2026-05-19.
 
 This document contains guidelines for _Angular_ TypeScript files.
 
@@ -8,21 +8,22 @@ This document contains guidelines for _Angular_ TypeScript files.
 
 ### Must do
 
-- use [**Angular coding style guide**](https://angular.io/guide/styleguide)
+- use [**Angular coding style guide**](https://angular.dev/style-guide)
   - rule of one (https://angular.dev/style-guide#rule-of-one)
   - put entities and services into the scope where they are being used
 - use [**Prettier**](https://prettier.io/)
-  - use config from /prettier.config.js
-  - use for .ts, .html, .scss, .md, (@ToDo check .json)
+  - use config from /.prettierrc
+  - use for .ts, .html, .scss, .md, .json
   - use Prettier on save hook
 - use [**ESLint**](https://eslint.org/)
   - use config from /eslint.config.js
+  - use ESLint on save hook
 - use descriptive and meaningful names for all symbols
   - boolean fields always start with `is`, `has`, `show` or alike (e.g. `isLoading` or `hasChanges()`)
   - event functions start with `on` (e.g., `onSave()`)
 - refactor symbol names if necessary (e.g., due to requirements changes)
-- annotate types for everything except implicitly inferred (e.g. `const x = 1`)
-  - also for function parameters and return values (also `void`)
+- annotate public/protected APIs, function parameters, and non-obvious return values (also `void`)
+  - prefer type inference for obvious locals and simple initializers (e.g. `const x = 1`)
 - prefer `Type[]` over `Array<Type>` for array types
 - always use curly braces `{}` for control flow statements
 - clean up debug code before committing (e.g., no console.log, temporarily disabled in ESLint for debugging)
@@ -36,6 +37,7 @@ This document contains guidelines for _Angular_ TypeScript files.
 - prefer using the `AsyncPipe`, use the `takeUntilDestroyed()` operator if subscribing manually
   - prefer subscribing in field initializer or constructor, else `DestroyRef` has to be passed in
 - keep constructors and lifecycle hooks simple and clean (basically only call methods, except one-liners)
+  - avoid lifecycle hooks in the first place
 
 ### Should do
 
@@ -70,14 +72,15 @@ This document contains guidelines for _Angular_ TypeScript files.
 - use comments for complex code, and only if necessary (the usage of descriptive and meaningful names for methods and variables should be enough in many cases, comments do not make up for bad code)
 - mark todos with `// @ToDo: task description`
 - distinguish between Smart/Controller and Dumb/Presentational Components
-- use `LazyLoading` for components
-- `immutablility` over `mutability` (for `OnPush` and `OnChanges`)
+- lazy-load feature routes; use `@defer` for expensive non-critical view fragments
+- `immutability` over `mutability` (for `OnPush` and `OnChanges`)
   - use `...` spread operator for shallow copies
-  - use `structeredClone()` or even better `klona` for deep copies
-- prefer `ChangeDetectionStrategy.OnPush` (temporarily disabled in ESLint for learning)
-- prefer `Standalone Components` over `Modules`
-- prefer new Signals API for state management (`signal()`, `computed()`, `effect()`)
-- prefer signal inputs (`input()`, `input.required()`), outputs (`output()`), and queries (`viewChild()`) over decorators (`@Input()`, `@Output()`, `@ViewChild()`)
+  - use `structuredClone()` or a well-maintained package such as `klona` for deep copies
+- use `ChangeDetectionStrategy.OnPush`
+- use `Standalone Components` over `Modules`
+  - do not set `standalone: true` inside Angular decorators, it is the default in Angular v20+
+- use the Signals API for state management (`signal()`, `computed()`, `effect()`)
+- use signal inputs (`input()`, `input.required()`), outputs (`output()`), and queries (`viewChild()`) over decorators (`@Input()`, `@Output()`, `@ViewChild()`)
 - prefer default `ViewEncapsulation` (`Emulated`)
 - prefer `inject()` over constructor dependency injection
   - group all `inject()` calls at the top of the class
@@ -86,9 +89,8 @@ This document contains guidelines for _Angular_ TypeScript files.
 - prefer `?: Type` shorthand over `:Type | undefined`
 - use `symbolName: Partial<Type> = {}` if possible for objects
 - use `!` with caution and only if you are sure that the value can never be `null` or `undefined` (e.g. required `@Inputs`, static `@ViewChild`)
-- use `{ required: true }` for required `@Inputs`
-- use `@HostBinding` and `@HostListener` instead of plain JS listeners
-  - @ToDo check if host decorator should be mentioned here
+- use `input.required<Type>()` for required inputs
+- use the `host` object in `@Component` or `@Directive` instead of `@HostBinding` and `@HostListener`
 - use variable `as` Type for type castings instead of `<Type>variable`
 
 ## Don't
@@ -98,24 +100,24 @@ This document contains guidelines for _Angular_ TypeScript files.
 - don't leave debug logs in the codebase
 - remove empty constructors
 - remove empty methods
-- try to avoid inline templates (except 1 to 3 liners)
-- try to avoid `any`, prefer `unknown`
-- try to avoid (if possible) these lifecycle hooks
+- don't default to external templates for very small components; prefer inline templates there
+- avoid `any`, prefer `unknown`
+- avoid these lifecycle hooks where possible
   - `DoCheck()`
   - `AfterContentChecked()`
   - `AfterViewChecked()`
 - if using signal-based data binding (signal inputs, outputs and queries) already
-  - try to avoid ALL lifecycle hooks
+  - avoid ALL lifecycle hooks
 - don't put leading `I` for interfaces
 
 ## Resources
 
 - [Prettier](https://prettier.io/)
 - [ESLint](https://eslint.org/)
-- [Angular coding style guide](https://angular.io/guide/styleguide)
+- [Angular coding style guide](https://angular.dev/style-guide)
 - Draft of new [Angular coding style guide](https://gist.github.com/jelbourn/0158b02cfb426e69c172db4ec92e3c0c)
 - [Google TypeScript Style Guide](https://google.github.io/styleguide/tsguide.html)
 
 ## Back to index
 
-- Angular [coding style guide](style-guide.md)
+- [Angular Coding Style Guide](style-guide.md)

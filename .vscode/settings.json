@@ -1,6 +1,5 @@
 {
   "editor.defaultFormatter": "esbenp.prettier-vscode",
-  "editor.formatOnPaste": true,
   "editor.formatOnSave": true,
-  "prettier.documentSelectors": ["**/*.{css,html,js,json,md,scss,ts}"]
+  "editor.formatOnPaste": true
 }

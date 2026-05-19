@@ -1,6 +1,6 @@
 # NPM Packages Style Guide
 
-Last updated on 2024-11-18.
+Last updated on 2026-05-19.
 
 This document contains guidelines for NPM packages.
 
@@ -10,8 +10,9 @@ Before including 3rd party package:
 
 ### Must do
 
+- check license
+- check vulnerabilities
 - use devDependencies for development tools
-- verify package license compatibility
 
 ### Should do
 
@@ -20,16 +21,16 @@ Before including 3rd party package:
 - make sure package is necessary
 - only use maintained packages
 - check for better alternatives
-- check vulnerabilities
 - check package size and impact on bundle (e.g., using Bundlephobia)
 - prefer Angular packages that support modern features (Standalone components, Zoneless)
 
 ## Don't
 
-- try to avoid using abandoned packages
+- avoid using abandoned packages
+- avoid using commercial packages with license fee without approval by project steering
 - avoid mixing package managers (e.g., stick to `pnpm` if `pnpm-lock.yaml` is present)
 - avoid installing global packages unnecessarily
 
 ## Back to index
 
-- Angular [coding style guide](style-guide.md)
+- [Angular Coding Style Guide](style-guide.md)

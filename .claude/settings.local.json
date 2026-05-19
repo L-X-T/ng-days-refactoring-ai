@@ -1,0 +1,41 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude mcp:*)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://127.0.0.1:3845/mcp)",
+      "Bash(curl -s http://localhost:4200/components/navigation-tree)",
+      "Bash(curl -s http://localhost:8075/)",
+      "Bash(do echo:*)",
+      "Bash(done)",
+      "Bash(find /Users/lxt/ng/knapp-af-gui/libs/angular-components-demo/src -name \"*.scss\" -type f -exec wc -l {} +)",
+      "Bash(for file:*)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)",
+      "Bash(git restore *)",
+      "Bash(grep:*)",
+      "Bash(lsof -i:4200)",
+      "Bash(lsof -i:4200 -sTCP:LISTEN -t)",
+      "Bash(lsof -nP -iTCP -sTCP:LISTEN)",
+      "Bash(node -e \"const p = require\\(''''/Users/lxt/ng/knapp-af-gui/node_modules/@nx/devkit/package.json''''\\); console.log\\(p.version\\)\")",
+      "Bash(npm run:*)",
+      "Bash(npx chrome-devtools-mcp@latest --help)",
+      "Bash(npx nx:*)",
+      "Bash(nx lint:*)",
+      "Bash(pnpm cypress:*)",
+      "Bash(pnpm nx:*)",
+      "Bash(pnpm tsc:*)",
+      "Bash(tee /tmp/serve.log)",
+      "mcp__angular-cli__list_projects",
+      "mcp__chrome-devtools__list_pages",
+      "mcp__figma__get_design_context",
+      "mcp__figma-desktop__get_metadata",
+      "mcp__figma-desktop__get_screenshot",
+      "mcp__nx-mcp__nx_docs",
+      "Read(//Users/lxt/ng/knapp-af-gui/**)",
+      "Skill(update-config:*)",
+      "Skill(update-config)",
+      "WebSearch"
+    ]
+  },
+  "enabledMcpjsonServers": ["angular-cli", "chrome-devtools", "figma", "figma-desktop"]
+}
